@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  cronjob:
+    container_name: cronjob
+    image: cronjob:0.0.1-SNAPSHOT
+    build: ./
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres-aws
+    networks:
+      - aws-network
+
+  postgres-aws:
+    container_name: postgres_container_aws
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dev_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PGDATA: /data/dev_user
+    volumes:
+      - postgres:/data/dev_user
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - aws-network
+
+  create-databases:
+    image: postgres
+    depends_on:
+      - postgres-aws
+    environment:
+      - PGPASSWORD=password
+    command: |
+      sh -c '
+        sleep 5 # Wait for the Postgres container to start
+        psql -h postgres-rwu -U dev_user -c "CREATE DATABASE online_library;";
+        psql -h postgres-rwu -U dev_user -c "CREATE DATABASE student_management_system;";
+      '
+    networks:
+      - aws-network
+
+volumes:
+  postgres:
+
+networks:
+  aws-network:
